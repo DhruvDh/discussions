@@ -12,6 +12,9 @@ const config: Config = {
     extend: {},
   },
   plugins: [typography, daisyui],
+  daisyui: {
+    themes: ["lofi"],
+  },
 };
 
 export default config;
