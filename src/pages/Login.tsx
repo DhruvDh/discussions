@@ -4,10 +4,16 @@ import {
   InstitutionProvider,
 } from "../providers/InstitutionProvider.tsx";
 import { MetaProvider, Title } from "@solidjs/meta";
-import { useSearchParams } from "@solidjs/router";
-import { supabase } from "../index.tsx";
+import { useNavigate, useSearchParams } from "@solidjs/router";
+import { setUserStore, supabase, userStore } from "../index.tsx";
 
 const Login: Component = () => {
+  supabase.auth.getUser().then(({ data: { user }, error }) => {
+    if (!error) {
+      setUserStore(user);
+    }
+  });
+
   const [email, setEmail] = createSignal("");
   const [isLoading, setIsLoading] = createSignal(false);
   const [error, setError] = createSignal("");
@@ -37,13 +43,19 @@ const Login: Component = () => {
     }
 
     setIsLoading(true);
-    // Here you would add the logic to send the magic link
-    console.log("Sending magic link to:", email());
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      setSuccess(true);
-    }, 2000);
+    supabase.auth
+      .signInWithOtp({
+        email: email(),
+      })
+      .then(({ data, error }) => {
+        if (error) {
+          setError(error.message);
+        } else {
+          setSuccess(true);
+        }
+        setIsLoading(false);
+        return data;
+      });
   };
 
   return (

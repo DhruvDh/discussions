@@ -1,12 +1,37 @@
-import { createContext, createResource, Match, Switch } from "solid-js";
+import {
+  createContext,
+  createEffect,
+  createResource,
+  Match,
+  Switch,
+} from "solid-js";
 import { useParams } from "@solidjs/router";
-import { supabase } from "../index.tsx";
+import { iid, setIid, supabase, userStore } from "../index.tsx";
 
 export const InstitutionContext = createContext({
   domainName: "charlotte",
   topDomain: "edu",
   name: "UNC Charlotte",
   id: 1,
+});
+
+createEffect(() => {
+  if (!userStore || !userStore.id) {
+    return;
+  }
+
+  supabase
+    .from("userData")
+    .select("iid")
+    .eq("uid", userStore.id)
+    .single()
+    .then(({ data: userInstitution, error }) => {
+      if (error) {
+        return;
+      }
+
+      setIid(userInstitution.iid);
+    });
 });
 
 const fetchInstitution = async (id) => {
@@ -30,7 +55,7 @@ const fetchInstitution = async (id) => {
 
 export function InstitutionProvider(props) {
   const [institution] = createResource(
-    useParams().institutionID,
+    iid() ? iid() : useParams().institutionID,
     fetchInstitution
   );
 

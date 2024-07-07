@@ -4,9 +4,10 @@ import {
   InstitutionContext,
   InstitutionProvider,
 } from "../providers/InstitutionProvider.tsx";
-import { setUserStore, supabase, userStore } from "../index.tsx";
+import { iid, setUserStore, supabase, userStore } from "../index.tsx";
+import { useNavigate } from "@solidjs/router";
 
-const App: Component = () => {
+const Welcome: Component = () => {
   supabase.auth.getUser().then(({ data: { user }, error }) => {
     if (!error) {
       setUserStore(user);
@@ -14,6 +15,9 @@ const App: Component = () => {
   });
 
   const institution = useContext(InstitutionContext);
+
+  const navigate = useNavigate();
+  navigate(`/${iid() ? iid() : institution.id}/`);
 
   return (
     <InstitutionProvider>
@@ -23,11 +27,11 @@ const App: Component = () => {
         </div>
       </MetaProvider>
 
-      <p class="text-4xl text-green-700 text-center py-20">
-        Hello {userStore?.user_metadata?.email} from {institution.name}!
-      </p>
+      <div class="min-h-screen bg-amber-100 flex flex-col justify-center items-center py-12 px-4 prose prose-xl">
+        <h1>Welcome {userStore?.user_metadata?.email}!</h1>
+      </div>
     </InstitutionProvider>
   );
 };
 
-export default App;
+export default Welcome;
