@@ -98,7 +98,7 @@ render(() => {
         component={lazy(() => import("./pages/App.tsx"))}
       />
       <Route
-        path="/:institutionID/login"
+        path="/login"
         component={lazy(() => import("./pages/Login.tsx"))}
       />
       <Route

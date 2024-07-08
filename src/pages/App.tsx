@@ -12,12 +12,6 @@ const App: Component = () => {
     updateUserSession();
   });
 
-  createEffect(() => {
-    if (iid() && userInstitution()) {
-      console.log(iid());
-      console.log(userInstitution());
-    }
-  });
 
   return (
     <>

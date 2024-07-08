@@ -15,9 +15,6 @@ const Welcome: Component = () => {
 
   createEffect(() => {
     if (iid() || userInstitution()) {
-      console.log(iid());
-      console.log(userInstitution());
-
       const navigate = useNavigate();
       navigate(`/${iid() ? iid() : userInstitution()?.id}/`);
     }

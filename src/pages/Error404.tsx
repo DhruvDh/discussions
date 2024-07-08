@@ -1,11 +1,4 @@
-import {
-  Component,
-  createSignal,
-  createResource,
-  For,
-  Show,
-  onMount,
-} from "solid-js";
+import { Component, createSignal, For, Show, onMount } from "solid-js";
 import { A, useSearchParams } from "@solidjs/router";
 import { MetaProvider, Title } from "@solidjs/meta";
 import { institutionStore, updateUserSession } from "../index.tsx";
@@ -95,11 +88,7 @@ const Error404: Component = () => {
 
             <div class="card-actions justify-center">
               <A
-                href={
-                  selectedInstitution()
-                    ? `/${selectedInstitution()}/login`
-                    : "#"
-                }
+                href={selectedInstitution() ? `/login` : "#"}
                 class="btn btn-primary"
               >
                 Go to Homepage

@@ -1,23 +1,20 @@
-import { Component, createSignal, onMount, Show, useContext } from "solid-js";
-import {
-  InstitutionContext,
-  InstitutionProvider,
-} from "../providers/InstitutionProvider.tsx";
+import { Component, createSignal, onMount, Show } from "solid-js";
 import { MetaProvider, Title } from "@solidjs/meta";
-import { useNavigate, useSearchParams } from "@solidjs/router";
-import { iid, supabase, updateUserSession, userStore } from "../index.tsx";
+import {
+  supabase,
+  updateUserSession,
+  institutionStore,
+  userInstitution,
+} from "../index.tsx";
 
 const Login: Component = () => {
-  onMount(() => updateUserSession());
-
-  const institution = useContext(InstitutionContext);
-  supabase.auth.getUser().then(({ data: { user }, error }) => {
-    if (!error) {
-      if (iid() ? iid() : institution.id) {
-        const navigate = useNavigate();
-        navigate(`/${iid() ? iid() : institution.id}`);
+  onMount(() => {
+    updateUserSession();
+    supabase.auth.getUser().then(({ data: { user }, error }) => {
+      if (!error) {
+        window.location.assign("/welcome");
       }
-    }
+    });
   });
 
   const [email, setEmail] = createSignal("");
@@ -25,12 +22,10 @@ const Login: Component = () => {
   const [error, setError] = createSignal("");
   const [success, setSuccess] = createSignal(false);
 
-  const [searchParams, setSearchParams] = useSearchParams();
-  const redirectModule = searchParams.module || null;
-
   const isValidEmail = (email: string) => {
-    return email.endsWith(
-      `@${institution.domainName}.${institution.topDomain}`
+    const [, domain] = email.split("@");
+    return institutionStore.some(
+      (inst) => domain === `${inst.domainName}.${inst.topDomain}`
     );
   };
 
@@ -40,9 +35,7 @@ const Login: Component = () => {
     setSuccess(false);
 
     if (!isValidEmail(email())) {
-      setError(
-        `Please enter a valid @${institution.domainName}.${institution.topDomain} email address.`
-      );
+      setError("Please enter an email address from a supported university.");
       return;
     }
 
@@ -63,10 +56,10 @@ const Login: Component = () => {
   };
 
   return (
-    <InstitutionProvider>
+    <>
       <MetaProvider>
         <div class="Home">
-          <Title>Login - Prep Work - {institution.name}</Title>
+          <Title>Login - Prep Work - {userInstitution()?.name}</Title>
         </div>
       </MetaProvider>
 
@@ -74,8 +67,7 @@ const Login: Component = () => {
         <div class="card bg-base-100 max-w-2xl shadow-xl">
           <div class="card-body">
             <h2 class="card-title text-center">
-              Please verify your @{institution.domainName}.
-              {institution.topDomain} email address
+              Please enter your university email address
             </h2>
 
             <form onSubmit={handleSubmit}>
@@ -96,7 +88,7 @@ const Login: Component = () => {
                   <input
                     type="email"
                     class="grow"
-                    placeholder={`Enter your @${institution.domainName}.${institution.topDomain} email`}
+                    placeholder="Enter your university email"
                     value={email()}
                     onInput={(e) => setEmail(e.currentTarget.value)}
                     required
@@ -159,7 +151,7 @@ const Login: Component = () => {
               <p>What to expect:</p>
               <ul class="list-disc list-inside mt-2">
                 <li>
-                  You'll recieve an email within a few minutes with a magic
+                  You'll receive an email within a few minutes with a magic
                   link.
                 </li>
                 <li>
@@ -172,7 +164,7 @@ const Login: Component = () => {
           </div>
         </div>
       </div>
-    </InstitutionProvider>
+    </>
   );
 };
 
