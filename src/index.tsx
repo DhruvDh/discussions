@@ -1,11 +1,18 @@
 /* @refresh reload */
 import "./index.css";
-import { createEffect, createResource, createSignal, lazy } from "solid-js";
+import { createEffect, createSignal, lazy, onMount } from "solid-js";
 import { render } from "solid-js/web";
 import { Route, Router } from "@solidjs/router";
 import "solid-devtools";
 import { createClient } from "@supabase/supabase-js";
 import { createStore } from "solid-js/store";
+
+export interface Institution {
+  id: number;
+  name: string;
+  domainName: string;
+  topDomain: string;
+}
 
 export const supabase = createClient(
   "https://oxrtehafaszdaaqejbwo.supabase.co",
@@ -17,10 +24,17 @@ export const supabase = createClient(
   }
 );
 
-const root = document.getElementById("root");
 export const [userStore, setUserStore] = createStore(null);
+export const [institutionStore, setInstitutionStore] = createStore<
+  Institution[]
+>([]);
+export const [iid, setIid] = createSignal<number>(null);
+export const [userInstitution, setUserInstitution] =
+  createSignal<Institution>(null);
 
 export const updateUserSession = () => {
+  fetchInstitutions();
+
   supabase.auth.getUser().then(({ data: { user }, error }) => {
     if (!error) {
       setUserStore(user);
@@ -31,15 +45,53 @@ export const updateUserSession = () => {
         access_token: localData.access_token,
         refresh_token: localData.refresh_token,
       });
+
+      if (iid() === null) {
+        supabase
+          .from("userData")
+          .select("*")
+          .eq("uid", user.id)
+          .single()
+          .then(({ data: userData, error }) => {
+            if (error) {
+              throw error;
+            }
+
+            setIid(userData.iid);
+          });
+      }
+    } else {
+      console.error(error);
     }
   });
 };
 
-updateUserSession();
-export const [iid, setIid] = createSignal(null);
+export const fetchInstitutions = () => {
+  if (institutionStore.length === 0) {
+    supabase
+      .from("institutions")
+      .select("*")
+      .then(({ data: institutions, error }) => {
+        if (error) {
+          throw error;
+        }
+        setInstitutionStore(institutions);
+      });
+  }
+};
 
-render(
-  () => (
+render(() => {
+  onMount(() => {
+    updateUserSession();
+  });
+
+  createEffect(() => {
+    if (iid() && institutionStore.length > 0) {
+      setUserInstitution(institutionStore.find((i) => i.id === iid()));
+    }
+  });
+
+  return (
     <Router>
       <Route
         path="/:institutionID/"
@@ -58,6 +110,5 @@ render(
         component={lazy(() => import("./pages/Error404.tsx"))}
       />
     </Router>
-  ),
-  root!
-);
+  );
+}, document.getElementById("root")!);

@@ -1,4 +1,4 @@
-import { Component, createSignal, Show, useContext } from "solid-js";
+import { Component, createSignal, onMount, Show, useContext } from "solid-js";
 import {
   InstitutionContext,
   InstitutionProvider,
@@ -8,7 +8,8 @@ import { useNavigate, useSearchParams } from "@solidjs/router";
 import { iid, supabase, updateUserSession, userStore } from "../index.tsx";
 
 const Login: Component = () => {
-  updateUserSession();
+  onMount(() => updateUserSession());
+
   const institution = useContext(InstitutionContext);
   supabase.auth.getUser().then(({ data: { user }, error }) => {
     if (!error) {

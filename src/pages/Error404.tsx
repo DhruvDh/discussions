@@ -3,36 +3,16 @@ import {
   createSignal,
   createResource,
   For,
-  useContext,
   Show,
+  onMount,
 } from "solid-js";
 import { A, useSearchParams } from "@solidjs/router";
 import { MetaProvider, Title } from "@solidjs/meta";
-import { updateUserSession, supabase } from "../index.tsx";
-
-interface Institution {
-  id: number;
-  name: string;
-  domainName: string;
-  topDomain: string;
-}
-
-const fetchInstitutions = async () => {
-  let { data: institutions, error } = await supabase
-    .from("institutions")
-    .select("*");
-
-  if (error) {
-    throw error;
-  }
-  return institutions as Institution[];
-};
+import { institutionStore, updateUserSession } from "../index.tsx";
 
 const Error404: Component = () => {
-  updateUserSession();
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  const [institutions] = createResource(fetchInstitutions);
+  onMount(() => updateUserSession());
+  const [searchParams, _] = useSearchParams();
   const [selectedInstitution, setSelectedInstitution] = createSignal<
     number | null
   >(null);
@@ -101,12 +81,11 @@ const Error404: Component = () => {
                 onChange={(e) =>
                   setSelectedInstitution(parseInt(e.currentTarget.value))
                 }
-                disabled={institutions.loading}
               >
                 <option disabled selected>
                   Pick one
                 </option>
-                <For each={institutions()}>
+                <For each={institutionStore}>
                   {(institution) => (
                     <option value={institution.id}>{institution.name}</option>
                   )}

@@ -1,32 +1,40 @@
-import { useContext, type Component } from "solid-js";
+import { createEffect, onMount, useContext, type Component } from "solid-js";
 import { MetaProvider, Title } from "@solidjs/meta";
 import {
-  InstitutionContext,
-  InstitutionProvider,
-} from "../providers/InstitutionProvider.tsx";
-import { iid, supabase, updateUserSession, userStore } from "../index.tsx";
+  iid,
+  updateUserSession,
+  userInstitution,
+  userStore,
+} from "../index.tsx";
 import { useNavigate } from "@solidjs/router";
 
 const Welcome: Component = () => {
-  updateUserSession();
+  onMount(() => {
+    updateUserSession();
+  });
 
-  const institution = useContext(InstitutionContext);
+  createEffect(() => {
+    if (iid() || userInstitution()) {
+      console.log(iid());
+      console.log(userInstitution());
 
-  const navigate = useNavigate();
-  navigate(`/${iid() ? iid() : institution.id}/`);
+      const navigate = useNavigate();
+      navigate(`/${iid() ? iid() : userInstitution()?.id}/`);
+    }
+  });
 
   return (
-    <InstitutionProvider>
+    <>
       <MetaProvider>
         <div class="Home">
-          <Title>Prep Work - {institution.name}</Title>
+          <Title>Prep Work - {userInstitution()?.name}</Title>
         </div>
       </MetaProvider>
 
       <div class="min-h-screen bg-amber-100 flex flex-col justify-center items-center py-12 px-4 prose prose-xl">
         <h1>Welcome {userStore?.user_metadata?.email}!</h1>
       </div>
-    </InstitutionProvider>
+    </>
   );
 };
 

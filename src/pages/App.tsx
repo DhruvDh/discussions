@@ -1,28 +1,36 @@
-import { useContext, type Component } from "solid-js";
+import { createEffect, onMount, useContext, type Component } from "solid-js";
 import { MetaProvider, Title } from "@solidjs/meta";
 import {
-  InstitutionContext,
-  InstitutionProvider,
-} from "../providers/InstitutionProvider.tsx";
-import { updateUserSession, userStore } from "../index.tsx";
+  iid,
+  updateUserSession,
+  userInstitution,
+  userStore,
+} from "../index.tsx";
 
 const App: Component = () => {
-  updateUserSession();
+  onMount(() => {
+    updateUserSession();
+  });
 
-  const institution = useContext(InstitutionContext);
+  createEffect(() => {
+    if (iid() && userInstitution()) {
+      console.log(iid());
+      console.log(userInstitution());
+    }
+  });
 
   return (
-    <InstitutionProvider>
+    <>
       <MetaProvider>
         <div class="Home">
-          <Title>Prep Work - {institution.name}</Title>
+          <Title>Prep Work - {userInstitution()?.name}</Title>
         </div>
       </MetaProvider>
 
       <p class="text-4xl text-green-700 text-center py-20">
-        Hello {userStore?.user_metadata?.email} from {institution.name}!
+        Hello {userStore?.user_metadata?.email} from {userInstitution()?.name}!
       </p>
-    </InstitutionProvider>
+    </>
   );
 };
 

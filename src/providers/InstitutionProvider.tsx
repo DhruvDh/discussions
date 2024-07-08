@@ -25,12 +25,12 @@ createEffect(() => {
     .select("*")
     .eq("uid", userStore.id)
     .single()
-    .then(({ data: userInstitution, error }) => {
+    .then(({ data, error }) => {
       if (error) {
         return;
       }
 
-      setIid(userInstitution.iid);
+      setIid(data.iid);
     });
 });
 
