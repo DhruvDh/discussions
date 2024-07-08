@@ -20,12 +20,22 @@ export const supabase = createClient(
 const root = document.getElementById("root");
 export const [userStore, setUserStore] = createStore(null);
 
-supabase.auth.getUser().then(({ data: { user }, error }) => {
-  if (!error) {
-    setUserStore(user);
-  }
-});
+export const updateUserSession = () => {
+  supabase.auth.getUser().then(({ data: { user }, error }) => {
+    if (!error) {
+      setUserStore(user);
+      const localData = JSON.parse(
+        localStorage.getItem("sb-oxrtehafaszdaaqejbwo-auth-token")
+      );
+      supabase.auth.setSession({
+        access_token: localData.access_token,
+        refresh_token: localData.refresh_token,
+      });
+    }
+  });
+};
 
+updateUserSession();
 export const [iid, setIid] = createSignal(null);
 
 render(

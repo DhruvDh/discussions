@@ -5,12 +5,17 @@ import {
 } from "../providers/InstitutionProvider.tsx";
 import { MetaProvider, Title } from "@solidjs/meta";
 import { useNavigate, useSearchParams } from "@solidjs/router";
-import { setUserStore, supabase, userStore } from "../index.tsx";
+import { iid, supabase, updateUserSession, userStore } from "../index.tsx";
 
 const Login: Component = () => {
+  updateUserSession();
+  const institution = useContext(InstitutionContext);
   supabase.auth.getUser().then(({ data: { user }, error }) => {
     if (!error) {
-      setUserStore(user);
+      if (iid() ? iid() : institution.id) {
+        const navigate = useNavigate();
+        navigate(`/${iid() ? iid() : institution.id}`);
+      }
     }
   });
 
@@ -21,8 +26,6 @@ const Login: Component = () => {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const redirectModule = searchParams.module || null;
-
-  const institution = useContext(InstitutionContext);
 
   const isValidEmail = (email: string) => {
     return email.endsWith(

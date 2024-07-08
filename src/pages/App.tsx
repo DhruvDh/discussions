@@ -4,14 +4,10 @@ import {
   InstitutionContext,
   InstitutionProvider,
 } from "../providers/InstitutionProvider.tsx";
-import { setUserStore, supabase, userStore } from "../index.tsx";
+import { updateUserSession, userStore } from "../index.tsx";
 
 const App: Component = () => {
-  supabase.auth.getUser().then(({ data: { user }, error }) => {
-    if (!error) {
-      setUserStore(user);
-    }
-  });
+  updateUserSession();
 
   const institution = useContext(InstitutionContext);
 

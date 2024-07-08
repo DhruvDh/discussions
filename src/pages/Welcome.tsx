@@ -4,15 +4,11 @@ import {
   InstitutionContext,
   InstitutionProvider,
 } from "../providers/InstitutionProvider.tsx";
-import { iid, setUserStore, supabase, userStore } from "../index.tsx";
+import { iid, supabase, updateUserSession, userStore } from "../index.tsx";
 import { useNavigate } from "@solidjs/router";
 
 const Welcome: Component = () => {
-  supabase.auth.getUser().then(({ data: { user }, error }) => {
-    if (!error) {
-      setUserStore(user);
-    }
-  });
+  updateUserSession();
 
   const institution = useContext(InstitutionContext);
 

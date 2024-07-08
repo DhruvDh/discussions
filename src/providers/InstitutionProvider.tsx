@@ -22,7 +22,7 @@ createEffect(() => {
 
   supabase
     .from("userData")
-    .select("iid")
+    .select("*")
     .eq("uid", userStore.id)
     .single()
     .then(({ data: userInstitution, error }) => {

@@ -8,7 +8,7 @@ import {
 } from "solid-js";
 import { A, useSearchParams } from "@solidjs/router";
 import { MetaProvider, Title } from "@solidjs/meta";
-import { setUserStore, supabase } from "../index.tsx";
+import { updateUserSession, supabase } from "../index.tsx";
 
 interface Institution {
   id: number;
@@ -29,11 +29,7 @@ const fetchInstitutions = async () => {
 };
 
 const Error404: Component = () => {
-  supabase.auth.getUser().then(({ data: { user }, error }) => {
-    if (!error) {
-      setUserStore(user);
-    }
-  });
+  updateUserSession();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [institutions] = createResource(fetchInstitutions);
