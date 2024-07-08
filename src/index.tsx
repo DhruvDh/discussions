@@ -29,6 +29,7 @@ export const [institutionStore, setInstitutionStore] = createStore<
   Institution[]
 >([]);
 export const [iid, setIid] = createSignal<number>(null);
+export const [cid, setCid] = createSignal<number[]>([]);
 export const [userInstitution, setUserInstitution] =
   createSignal<Institution>(null);
 
@@ -58,6 +59,7 @@ export const updateUserSession = () => {
             }
 
             setIid(userData.iid);
+            setCid(userData.courses);
           });
       }
     } else {

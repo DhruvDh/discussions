@@ -1,29 +1,204 @@
-import { createEffect, onMount, useContext, type Component } from "solid-js";
-import { MetaProvider, Title } from "@solidjs/meta";
 import {
-  iid,
+  createEffect,
+  createResource,
+  createSignal,
+  For,
+  Show,
+  onMount,
+  type Component,
+} from "solid-js";
+import { MetaProvider, Title } from "@solidjs/meta";
+import { A } from "@solidjs/router";
+import {
+  cid,
+  setCid,
+  supabase,
   updateUserSession,
   userInstitution,
   userStore,
 } from "../index.tsx";
+
+const fetchAssignments = async (iid) => {
+  const { data, error } = await supabase
+    .from("assignments")
+    .select("*")
+    .eq("iid", iid);
+  if (error) throw error;
+  return data;
+};
+
+const fetchSubmissions = async (uid) => {
+  const { data, error } = await supabase
+    .from("submissions")
+    .select("*")
+    .eq("uid", uid);
+  if (error) throw error;
+  return data;
+};
+
+const fetchCourses = async (iid) => {
+  const { data, error } = await supabase
+    .from("courses")
+    .select("*")
+    .eq("iid", iid);
+  if (error) throw error;
+  return data;
+};
 
 const App: Component = () => {
   onMount(() => {
     updateUserSession();
   });
 
+  const [assignments] = createResource(
+    () => userInstitution()?.id,
+    fetchAssignments
+  );
+  const [submissions] = createResource(() => userStore?.id, fetchSubmissions);
+  const [courses] = createResource(() => userInstitution()?.id, fetchCourses);
+  const [isSaving, setIsSaving] = createSignal(false);
+
+  const getSubmissionStatus = (assignmentID) => {
+    if (submissions.loading) return "Loading...";
+    const submission = submissions()?.find(
+      (s) => s.assignmentID === assignmentID
+    );
+    if (!submission) return "Not submitted";
+    return `Submitted`;
+  };
+
+  const toggleCourse = (courseId) => {
+    setCid((prev) => {
+      if (prev.includes(courseId)) {
+        return prev.filter((id) => id !== courseId);
+      } else {
+        return [...prev, courseId];
+      }
+    });
+  };
+
+  const saveCourseSelections = async () => {
+    setIsSaving(true);
+    try {
+      const { data, error } = await supabase
+        .from("userData")
+        .update({ courses: cid() })
+        .eq("uid", userStore.id);
+
+      if (error) throw error;
+
+      alert("Course selections saved successfully!");
+    } catch (error) {
+      console.error("Error saving course selections:", error);
+      alert("Failed to save course selections. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <>
       <MetaProvider>
         <div class="Home">
-          <Title>Prep Work - {userInstitution()?.name}</Title>
+          <Title>Dashboard - Prep Work - {userInstitution()?.name}</Title>
         </div>
       </MetaProvider>
 
-      <p class="text-4xl text-green-700 text-center py-20">
-        Hello {userStore?.user_metadata?.email} from {userInstitution()?.name}!
-      </p>
+      <div class="min-h-screen bg-amber-100 flex flex-col items-center py-12 px-4">
+        <div class="card bg-base-100 max-w-4xl w-full shadow-xl mb-8">
+          <div class="card-body">
+            <h2 class="card-title text-3xl mb-6">
+              Welcome, {userStore?.user_metadata?.email}!
+            </h2>
+            <p class="text-lg mb-4">Institution: {userInstitution()?.name}</p>
+
+            <Show
+              when={!assignments.loading}
+              fallback={<div class="loading loading-spinner loading-lg"></div>}
+            >
+              <h3 class="text-2xl font-bold mb-4">Your Assignments</h3>
+              <div class="overflow-x-auto">
+                <table class="table w-full">
+                  <thead>
+                    <tr>
+                      <th>Module</th>
+                      <th>Total Questions</th>
+                      <th>Status</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <For each={assignments()}>
+                      {(assignment) => (
+                        <tr>
+                          <td>{assignment.moduleName}</td>
+                          <td>{assignment.totalNumberOfQuestions}</td>
+                          <td>{getSubmissionStatus(assignment.id)}</td>
+                          <td>
+                            <A
+                              href={`/assignment/${assignment.id}`}
+                              class="btn btn-primary btn-sm"
+                              classList={{
+                                "btn-disabled":
+                                  getSubmissionStatus(assignment.id) ===
+                                  "Submitted",
+                              }}
+                            >
+                              {getSubmissionStatus(assignment.id) ===
+                              "Not submitted"
+                                ? "Start"
+                                : "View"}
+                            </A>
+                          </td>
+                        </tr>
+                      )}
+                    </For>
+                  </tbody>
+                </table>
+              </div>
+            </Show>
+          </div>
+        </div>
+
+        <div class="card bg-base-100 max-w-4xl w-full shadow-xl">
+          <div class="card-body">
+            <h3 class="text-2xl font-bold mb-4">Course Enrollment</h3>
+            <Show
+              when={!courses.loading}
+              fallback={<div class="loading loading-spinner loading-lg"></div>}
+            >
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <For each={courses()}>
+                  {(course) => (
+                    <div class="form-control">
+                      <label class="label cursor-pointer">
+                        <span class="label-text">
+                          {course.courseCode} - {course.courseName}
+                        </span>
+                        <input
+                          type="checkbox"
+                          class="toggle toggle-primary"
+                          checked={cid().includes(course.id)}
+                          onChange={() => toggleCourse(course.id)}
+                        />
+                      </label>
+                    </div>
+                  )}
+                </For>
+              </div>
+              <div class="card-actions justify-end mt-6">
+                <button
+                  class="btn btn-primary"
+                  onClick={saveCourseSelections}
+                  disabled={isSaving()}
+                >
+                  {isSaving() ? "Saving..." : "Save Course Selections"}
+                </button>
+              </div>
+            </Show>
+          </div>
+        </div>
+      </div>
     </>
   );
 };
