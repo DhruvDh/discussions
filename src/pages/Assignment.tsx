@@ -7,9 +7,9 @@ import {
   createResource,
   createSignal,
 } from "solid-js";
-import { TopMenu } from "./TopMenu";
-import { Conversation } from "./Conversation";
-import ChatInput from "./ChatInput";
+import { TopMenu } from "../components/TopMenu.tsx";
+import { Conversation } from "../components/Conversation.tsx";
+import ChatInput from "../components/ChatInput.tsx";
 
 const Assignment = () => {
   const params = useParams();
