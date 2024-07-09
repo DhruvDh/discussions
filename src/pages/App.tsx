@@ -1,7 +1,6 @@
 import {
   createEffect,
   createResource,
-  createSignal,
   For,
   Show,
   onMount,
@@ -18,16 +17,19 @@ import {
   userStore,
 } from "../index.tsx";
 
-const fetchAssignments = async (iid) => {
+const fetchAssignments = async ([iid, enrolledCourses]) => {
+  if (!iid || !enrolledCourses || enrolledCourses.length === 0) return [];
   const { data, error } = await supabase
     .from("assignments")
     .select("*")
-    .eq("iid", iid);
+    .eq("iid", iid)
+    .in("courseID", enrolledCourses);
   if (error) throw error;
   return data;
 };
 
 const fetchSubmissions = async (uid) => {
+  if (!uid) return [];
   const { data, error } = await supabase
     .from("submissions")
     .select("*")
@@ -37,6 +39,7 @@ const fetchSubmissions = async (uid) => {
 };
 
 const fetchCourses = async (iid) => {
+  if (!iid) return [];
   const { data, error } = await supabase
     .from("courses")
     .select("*")
@@ -50,13 +53,17 @@ const App: Component = () => {
     updateUserSession();
   });
 
-  const [assignments] = createResource(
-    () => userInstitution()?.id,
+  const [assignments, { refetch: refetchAssignments }] = createResource(
+    () => [userInstitution()?.id, cid()],
     fetchAssignments
   );
   const [submissions] = createResource(() => userStore?.id, fetchSubmissions);
   const [courses] = createResource(() => userInstitution()?.id, fetchCourses);
-  const [isSaving, setIsSaving] = createSignal(false);
+
+  createEffect(() => {
+    // Refetch assignments when cid changes
+    refetchAssignments();
+  });
 
   const getSubmissionStatus = (assignmentID) => {
     if (submissions.loading) return "Loading...";
@@ -67,33 +74,23 @@ const App: Component = () => {
     return `Submitted`;
   };
 
-  const toggleCourse = (courseId) => {
+  const toggleCourse = async (courseId) => {
     setCid((prev) => {
-      if (prev.includes(courseId)) {
-        return prev.filter((id) => id !== courseId);
-      } else {
-        return [...prev, courseId];
-      }
-    });
-  };
+      const newCid = prev.includes(courseId)
+        ? prev.filter((id) => id !== courseId)
+        : [...prev, courseId];
 
-  const saveCourseSelections = async () => {
-    setIsSaving(true);
-    try {
-      const { data, error } = await supabase
+      // Update userData in Supabase
+      supabase
         .from("userData")
-        .update({ courses: cid() })
-        .eq("uid", userStore.id);
+        .update({ courses: newCid })
+        .eq("uid", userStore.id)
+        .then(({ error }) => {
+          if (error) console.error("Error updating course selections:", error);
+        });
 
-      if (error) throw error;
-
-      alert("Course selections saved successfully!");
-    } catch (error) {
-      console.error("Error saving course selections:", error);
-      alert("Failed to save course selections. Please try again.");
-    } finally {
-      setIsSaving(false);
-    }
+      return newCid;
+    });
   };
 
   return (
@@ -185,15 +182,6 @@ const App: Component = () => {
                     </div>
                   )}
                 </For>
-              </div>
-              <div class="card-actions justify-end mt-6">
-                <button
-                  class="btn btn-primary"
-                  onClick={saveCourseSelections}
-                  disabled={isSaving()}
-                >
-                  {isSaving() ? "Saving..." : "Save Course Selections"}
-                </button>
               </div>
             </Show>
           </div>

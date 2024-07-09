@@ -108,6 +108,10 @@ render(() => {
         component={lazy(() => import("./pages/Welcome.tsx"))}
       />
       <Route
+        path="/assignment/:assignmentID"
+        component={lazy(() => import("./pages/Assignment.tsx"))}
+      />
+      <Route
         path="*404"
         component={lazy(() => import("./pages/Error404.tsx"))}
       />
