@@ -79,8 +79,10 @@ const App: Component = () => {
         .then(({ error }) => {
           if (error) {
             console.error("Error updating course selections:", error);
+            // @ts-ignore
             toast.error("Failed to update course selection");
           } else {
+            // @ts-ignore
             toast.success("Course selection updated");
           }
         });

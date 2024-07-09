@@ -1,5 +1,7 @@
 /* @refresh reload */
 import "./index.css";
+import "primeicons/primeicons.css";
+
 import { createEffect, createSignal, lazy, onMount } from "solid-js";
 import { render } from "solid-js/web";
 import { Route, Router } from "@solidjs/router";
