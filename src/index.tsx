@@ -6,6 +6,7 @@ import { Route, Router } from "@solidjs/router";
 import "solid-devtools";
 import { createClient } from "@supabase/supabase-js";
 import { createStore } from "solid-js/store";
+import { Toaster } from "solid-toast";
 
 export interface Institution {
   id: number;
@@ -80,6 +81,17 @@ export const fetchInstitutions = () => {
         setInstitutionStore(institutions);
       });
   }
+};
+
+export const fetchAssignments = async ([iid, enrolledCourses]) => {
+  if (!iid || !enrolledCourses || enrolledCourses.length === 0) return [];
+  const { data, error } = await supabase
+    .from("assignments")
+    .select("*")
+    .eq("iid", iid)
+    .in("courseID", enrolledCourses);
+  if (error) throw error;
+  return data;
 };
 
 render(() => {

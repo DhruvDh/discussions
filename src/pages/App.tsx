@@ -10,23 +10,14 @@ import { MetaProvider, Title } from "@solidjs/meta";
 import { A } from "@solidjs/router";
 import {
   cid,
+  fetchAssignments,
   setCid,
   supabase,
   updateUserSession,
   userInstitution,
   userStore,
 } from "../index.tsx";
-
-const fetchAssignments = async ([iid, enrolledCourses]) => {
-  if (!iid || !enrolledCourses || enrolledCourses.length === 0) return [];
-  const { data, error } = await supabase
-    .from("assignments")
-    .select("*")
-    .eq("iid", iid)
-    .in("courseID", enrolledCourses);
-  if (error) throw error;
-  return data;
-};
+import toast, { Toaster } from "solid-toast";
 
 const fetchSubmissions = async (uid) => {
   if (!uid) return [];
@@ -86,7 +77,12 @@ const App: Component = () => {
         .update({ courses: newCid })
         .eq("uid", userStore.id)
         .then(({ error }) => {
-          if (error) console.error("Error updating course selections:", error);
+          if (error) {
+            console.error("Error updating course selections:", error);
+            toast.error("Failed to update course selection");
+          } else {
+            toast.success("Course selection updated");
+          }
         });
 
       return newCid;
@@ -95,6 +91,8 @@ const App: Component = () => {
 
   return (
     <>
+      <Toaster />
+
       <MetaProvider>
         <div class="Home">
           <Title>Dashboard - Prep Work - {userInstitution()?.name}</Title>
