@@ -10,7 +10,8 @@ import {
 import { TopMenu } from "../components/TopMenu.tsx";
 import { Conversation } from "../components/Conversation.tsx";
 import ChatInput from "../components/ChatInput.tsx";
-import { createStore } from "solid-js/store/types/server.js";
+import { createStore } from "solid-js/store";
+import { produce } from "solid-js/store";
 
 interface Question {
   id: string;
@@ -36,6 +37,7 @@ interface AssignmentState {
   assignmentStarted: boolean;
   selectedAssignmentID: string;
   currentQuestionIndex: number;
+  totalQuestionsAnswered: number;
 }
 
 const fetchSystemMessage = async (assignmentID) => {
@@ -69,17 +71,6 @@ const Assignment = () => {
     fetchSystemMessage
   );
 
-  createEffect(() => {
-    if (assignments.error) {
-      // @ts-ignore
-      toast.error("Failed to fetch assignments");
-    }
-  });
-
-  createEffect(() => {
-    refetchAssignments();
-  });
-
   const assignmentName = createMemo(
     () =>
       assignments()?.find((a) => a.id === params.assignmentID)?.moduleName ||
@@ -90,11 +81,13 @@ const Assignment = () => {
       assignments()?.find((a) => a.id === params.assignmentID)
         ?.totalNumberOfQuestions || 0
   );
-  const state = createStore<AssignmentState>({
+
+  const [state, setState] = createStore<AssignmentState>({
     questions: [],
-    selectedAssignmentID: params.assignmentID,
     assignmentStarted: false,
+    selectedAssignmentID: params.assignmentID,
     currentQuestionIndex: 0,
+    totalQuestionsAnswered: 0,
   });
 
   // New signals and functions for child components
@@ -102,44 +95,78 @@ const Assignment = () => {
   const [error, setError] = createSignal<string | null>(null);
 
   const handleSendMessage = (message: string) => {
-    setMessages([
-      ...messages(),
-      { id: Date.now().toString(), content: message, role: "user" },
-    ]);
-    // Here you would typically send the message to your backend and wait for a response
-    // For now, we'll just add a dummy response
+    setState(
+      produce((s) => {
+        const currentQuestion = s.questions[s.currentQuestionIndex];
+        if (currentQuestion) {
+          currentQuestion.conversation.push({
+            id: Date.now().toString(),
+            content: message,
+            role: "user",
+          });
+        } else {
+          console.error("No current question found");
+          // @ts-ignore
+          toast.error("No current question found");
+        }
+      })
+    );
+
+    // Simulated response (replace with actual API call)
     setTimeout(() => {
-      setMessages([
-        ...messages(),
-        {
-          id: (Date.now() + 1).toString(),
-          content: "This is a response from the assistant.",
-          role: "assistant",
-        },
-      ]);
+      setState(
+        produce((s) => {
+          const currentQuestion = s.questions[s.currentQuestionIndex];
+          if (currentQuestion) {
+            currentQuestion.conversation.push({
+              id: (Date.now() + 1).toString(),
+              content: "This is a response from the assistant.",
+              role: "assistant",
+            });
+          } else {
+            console.error("No current question found");
+            // @ts-ignore
+            toast.error("No current question found");
+          }
+        })
+      );
     }, 1000);
   };
 
   const handleStartAssignment = () => {
-    setAssignmentStarted(true);
-    // Add logic for starting the assignment
+    setState("assignmentStarted", true);
   };
 
   const handleResetSession = () => {
-    // Add logic for resetting the session
+    setState(
+      produce((s) => {
+        s.questions = [];
+        s.currentQuestionIndex = 0;
+        s.totalQuestionsAnswered = 0;
+        s.assignmentStarted = false;
+      })
+    );
   };
 
   const handlePreviousQuestion = () => {
-    setCurrentQuestionIndex((prev) => Math.max(0, prev - 1));
+    setState("currentQuestionIndex", (prev) => Math.max(0, prev - 1));
   };
 
   const handleNextQuestion = () => {
-    setCurrentQuestionIndex((prev) => Math.min(totalQuestions() - 1, prev + 1));
+    setState("currentQuestionIndex", (prev) =>
+      Math.min(totalQuestions() - 1, prev + 1)
+    );
   };
 
   const handleMarkAsAnswered = () => {
-    setTotalQuestionsAnswered((prev) => prev + 1);
-    setCurrentQuestionAnswered(true);
+    setState(
+      produce((s) => {
+        s.totalQuestionsAnswered++;
+        if (s.questions[s.currentQuestionIndex]) {
+          s.questions[s.currentQuestionIndex].isAnswered = true;
+        }
+      })
+    );
   };
 
   const handleSubmitAssignment = () => {
@@ -154,6 +181,17 @@ const Assignment = () => {
     }
   });
 
+  createEffect(() => {
+    if (assignments.error) {
+      // @ts-ignore
+      toast.error("Failed to fetch assignments");
+    }
+  });
+
+  createEffect(() => {
+    refetchAssignments();
+  });
+
   return (
     <>
       <Toaster />
@@ -162,10 +200,10 @@ const Assignment = () => {
         error={error()}
         selectedAssignmentDataReady={!assignments.loading}
         assignmentName={assignmentName()}
-        currentQuestionIndex={currentQuestionIndex()}
+        currentQuestionIndex={state.currentQuestionIndex}
         totalQuestions={totalQuestions()}
-        totalQuestionsAnswered={totalQuestionsAnswered()}
-        assignmentStarted={assignmentStarted()}
+        totalQuestionsAnswered={state.totalQuestionsAnswered}
+        assignmentStarted={state.assignmentStarted}
         onStartAssignment={handleStartAssignment}
         onResetSession={handleResetSession}
         onPreviousQuestion={handlePreviousQuestion}
@@ -173,9 +211,15 @@ const Assignment = () => {
         onMarkAsAnswered={handleMarkAsAnswered}
         onSubmitAssignment={handleSubmitAssignment}
       />
-      <Conversation messages={messages()} />
+      <Conversation
+        messages={
+          state.questions[state.currentQuestionIndex]?.conversation || []
+        }
+      />
       <ChatInput
-        currentQuestionAnswered={currentQuestionAnswered()}
+        currentQuestionAnswered={
+          state.questions[state.currentQuestionIndex]?.isAnswered || false
+        }
         onSendMessage={handleSendMessage}
       />
     </>
