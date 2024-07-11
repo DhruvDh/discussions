@@ -2,7 +2,7 @@ import { For, Show } from "solid-js";
 import Message from "./Message.tsx";
 
 interface ConversationMessage {
-  id: string;
+  timestamp: number;
   content: string;
   role: "assistant" | "user";
 }
@@ -17,7 +17,11 @@ export const Conversation = (props: ConversationProps) => {
       <For each={props.messages}>
         {(message) => (
           <Show when={message} fallback={<></>}>
-            <Message msg={message.content} role={message.role} timestamp={""} />
+            <Message
+              msg={message.content}
+              role={message.role}
+              timestamp={message.timestamp}
+            />
           </Show>
         )}
       </For>

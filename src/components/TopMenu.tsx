@@ -1,5 +1,6 @@
-import { Show, createSignal } from "solid-js";
+import { createSignal } from "solid-js";
 import { Modal } from "./Modal.tsx";
+import toast from "solid-toast";
 
 interface TopMenuProps {
   loading: boolean;
@@ -32,6 +33,8 @@ export const TopMenu = (props: TopMenuProps) => {
       console.error(
         "Assignment not started. Please start the assignment first."
       );
+      // @ts-ignore
+      toast.error("Assignment not started. Please start the assignment first.");
     }
   };
 
