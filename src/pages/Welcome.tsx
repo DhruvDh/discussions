@@ -1,6 +1,12 @@
 import { onMount, Show, createSignal, type Component } from "solid-js";
 import { MetaProvider, Title } from "@solidjs/meta";
-import { updateUserSession, userInstitution, userStore } from "../index.tsx";
+import {
+  iid,
+  supabase,
+  updateUserSession,
+  userInstitution,
+  userStore,
+} from "../index.tsx";
 import { useSearchParams, A } from "@solidjs/router";
 
 const Welcome: Component = () => {
@@ -19,6 +25,28 @@ const Welcome: Component = () => {
     }
 
     if (updateUserSession()) {
+      const authToken = JSON.parse(
+        localStorage.getItem("sb-oxrtehafaszdaaqejbwo-auth-token")
+      );
+
+      supabase
+        .from("userData")
+        .select("*")
+        .eq("id", authToken?.user?.id || "")
+        .then(({ data, error }) => {
+          if (error) {
+            console.error(error);
+            return;
+          }
+
+          if (data.length === 0) {
+            supabase.from("userData").insert({
+              iid: iid(),
+              uid: authToken?.user?.id,
+            });
+          }
+        });
+
       window.location.assign("/");
     }
   });
