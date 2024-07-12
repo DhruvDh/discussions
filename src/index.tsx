@@ -37,38 +37,55 @@ export const [userInstitution, setUserInstitution] =
   createSignal<Institution>(null);
 
 export const updateUserSession = () => {
-  fetchInstitutions();
+  if (sessionStorage.getItem("institutions")) {
+    setInstitutionStore(JSON.parse(sessionStorage.getItem("institutions")));
+  } else {
+    fetchInstitutions();
+  }
 
-  supabase.auth.getUser().then(({ data: { user }, error }) => {
-    if (!error) {
-      setUserStore(user);
-      const localData = JSON.parse(
-        localStorage.getItem("sb-oxrtehafaszdaaqejbwo-auth-token")
-      );
-      supabase.auth.setSession({
+  if (sessionStorage.getItem("iid")) {
+    setIid(Number(sessionStorage.getItem("iid")));
+  }
+
+  if (sessionStorage.getItem("cid")) {
+    setCid(JSON.parse(sessionStorage.getItem("cid")));
+  }
+
+  if (localStorage.getItem("sb-oxrtehafaszdaaqejbwo-auth-token")) {
+    const localData = JSON.parse(
+      localStorage.getItem("sb-oxrtehafaszdaaqejbwo-auth-token")
+    );
+    supabase.auth
+      .setSession({
         access_token: localData.access_token,
         refresh_token: localData.refresh_token,
+      })
+      .then(({ data: { user }, error }) => {
+        if (!error) {
+          setUserStore(user);
+
+          if (iid() === null) {
+            supabase
+              .from("userData")
+              .select("*")
+              .eq("uid", user.id)
+              .single()
+              .then(({ data: userData, error }) => {
+                if (error) {
+                  throw error;
+                }
+
+                setIid(userData.iid);
+                sessionStorage.setItem("iid", userData.iid);
+                setCid(userData.courses);
+                sessionStorage.setItem("cid", JSON.stringify(userData.courses));
+              });
+          }
+        } else {
+          console.error(error);
+        }
       });
-
-      if (iid() === null) {
-        supabase
-          .from("userData")
-          .select("*")
-          .eq("uid", user.id)
-          .single()
-          .then(({ data: userData, error }) => {
-            if (error) {
-              throw error;
-            }
-
-            setIid(userData.iid);
-            setCid(userData.courses);
-          });
-      }
-    } else {
-      console.error(error);
-    }
-  });
+  }
 };
 
 export const fetchInstitutions = () => {
@@ -81,6 +98,7 @@ export const fetchInstitutions = () => {
           throw error;
         }
         setInstitutionStore(institutions);
+        sessionStorage.setItem("institutions", JSON.stringify(institutions));
       });
   }
 };

@@ -5,8 +5,7 @@ import { createEffect, createMemo, createResource, onMount } from "solid-js";
 import { TopMenu } from "../components/TopMenu.tsx";
 import { Conversation } from "../components/Conversation.tsx";
 import ChatInput from "../components/ChatInput.tsx";
-import { createStore } from "solid-js/store";
-import { produce } from "solid-js/store";
+import { createStore, produce } from "solid-js/store";
 
 interface Question {
   id: string;
@@ -20,6 +19,7 @@ interface Question {
 
 interface QuestionState extends Question {
   isAnswered: boolean;
+  isAsked: boolean;
   conversation: Array<{
     content: string;
     role: "assistant" | "user";
@@ -74,19 +74,13 @@ const fetchSystemMessage = async (assignmentID: string) => {
   return data[0].content;
 };
 
-const [state, setState] = createStore<AssignmentState>({
-  assignmentStarted: false,
-  currentQuestionIndex: 0,
-  questionStates: [],
-});
-
 const fetchAIResponse = async (
   conversation: Array<{ role: string; content: string }>,
   systemMessage: string
 ) => {
   const messages = [
     { role: "system", content: systemMessage },
-    ...conversation,
+    ...conversation.map(({ role, content }) => ({ role, content })),
   ];
 
   const response = await fetch("https://dhruvdh-groq-deno.deno.dev/", {
@@ -102,7 +96,7 @@ const fetchAIResponse = async (
   }
 
   const data = await response.json();
-  return data.choices[0].message.content;
+  return data.content[0]?.text || data.choices[0].message.content;
 };
 
 const generateSystemMessage = (
@@ -124,6 +118,12 @@ Additional context: ${question.metadata}`;
 const Assignment = () => {
   updateUserSession();
   const params = useParams();
+
+  const [state, setState] = createStore<AssignmentState>({
+    assignmentStarted: false,
+    currentQuestionIndex: 0,
+    questionStates: [],
+  });
 
   const [persistentData, setPersistentData] = createStore<PersistentData>({
     assignmentID: params.assignmentID,
@@ -194,7 +194,6 @@ const Assignment = () => {
         .filter((q) => q.difficulty === "hard")
         .slice(0, Math.ceil(totalQuestions / 3));
 
-      // Combine and shuffle again
       const selectedQuestions = [
         ...easyQuestions,
         ...mediumQuestions,
@@ -214,13 +213,33 @@ const Assignment = () => {
       );
     }
   });
+  const showPlaceholderMessage = () => {
+    setState(
+      produce((s) => {
+        s.questionStates[s.currentQuestionIndex].conversation.push({
+          content: '<span class="loading loading-dots loading-md"></span>',
+          role: "assistant",
+          timestamp: Date.now(),
+        });
+      })
+    );
+  };
+
+  const hidePlaceholderMessage = () => {
+    setState(
+      produce((s) => {
+        s.questionStates[s.currentQuestionIndex].conversation =
+          s.questionStates[s.currentQuestionIndex].conversation.filter(
+            (m) =>
+              m.content !==
+              '<span class="loading loading-dots loading-md"></span>'
+          );
+      })
+    );
+  };
 
   const currentQuestion = createMemo(
     () => state.questionStates[state.currentQuestionIndex] || null
-  );
-
-  const allQuestionsAnswered = createMemo(() =>
-    state.questionStates.every((q) => q.isAnswered)
   );
 
   const currentQuestionAnswered = createMemo(
@@ -239,29 +258,80 @@ const Assignment = () => {
     () => assignment.error || questions.error || systemMessage.error
   );
 
+  const askQuestion = () => {
+    if (!systemMessage()) {
+      // @ts-ignore
+      toast.error(
+        "Failed to fetch system message. Cannot start the assignment."
+      );
+      return;
+    }
+
+    if (!questions() || questions().length === 0) {
+      // @ts-ignore
+      toast.error(
+        "Failed to fetch questions or no questions found. Cannot start the assignment."
+      );
+      return;
+    }
+
+    const currentQuestion = state.questionStates[state.currentQuestionIndex];
+    if (currentQuestion && !currentQuestion.isAsked) {
+      handleSendMessage("Please start following your instructions!").then(
+        () => {
+          setState(
+            produce((s) => {
+              s.questionStates[s.currentQuestionIndex].isAsked = true;
+            })
+          );
+        }
+      );
+    }
+  };
+
   const handleStartAssignment = () => {
+    askQuestion();
     setState("assignmentStarted", true);
   };
 
   const handleNextQuestion = () => {
+    if (!state?.assignmentStarted) {
+      // @ts-ignore
+      toast.error("Assignment not started. Please start the assignment first.");
+      return;
+    }
+
     if (state.currentQuestionIndex < persistentData.totalQuestions - 1) {
       setState("currentQuestionIndex", (prev) => prev + 1);
+      askQuestion();
     } else {
       // @ts-ignore
-      toast.info("You've reached the last question.");
+      toast.error("You've reached the last question.");
     }
   };
 
   const handlePreviousQuestion = () => {
+    if (!state?.assignmentStarted) {
+      // @ts-ignore
+      toast.error("Assignment not started. Please start the assignment first.");
+      return;
+    }
+
     if (state.currentQuestionIndex > 0) {
       setState("currentQuestionIndex", (prev) => prev - 1);
     } else {
       // @ts-ignore
-      toast.info("You're already at the first question.");
+      toast.error("You're already at the first question.");
     }
   };
 
   const handleMarkAsAnswered = () => {
+    if (!state?.assignmentStarted) {
+      // @ts-ignore
+      toast.error("Assignment not started. Please start the assignment first.");
+      return;
+    }
+
     setState(
       produce((s) => {
         if (s.questionStates[s.currentQuestionIndex]) {
@@ -269,41 +339,103 @@ const Assignment = () => {
         }
       })
     );
+
+    handleNextQuestion();
   };
 
   const handleResetSession = () => {
+    if (!state?.assignmentStarted) {
+      // @ts-ignore
+      toast.error("Assignment not started. Cannot reset session.");
+      return;
+    }
+
     setState({
       assignmentStarted: false,
       currentQuestionIndex: 0,
       questionStates: persistentData.questions.map((q) => ({
         ...q,
         isAnswered: false,
+        isAsked: false,
         conversation: [],
       })),
     });
+
     // @ts-ignore
     toast.success("Session has been reset.");
   };
 
-  const handleSubmitAssignment = () => {
-    // Placeholder for now
-    // @ts-ignore
-    toast.info("Assignment submitted. This feature is not yet implemented.");
+  const handleSubmitAssignment = async () => {
+    if (!state.assignmentStarted) {
+      // @ts-ignore
+      toast.error("Assignment not started. Please start the assignment first.");
+      return;
+    }
+
+    const numQuestionsCompleted = state.questionStates.filter(
+      (q) => q.isAnswered
+    ).length;
+
+    const content = state.questionStates.map((q) => ({
+      questionId: q.id,
+      conversation: q.conversation,
+    }));
+
+    const timeTakenPerQuestion = state.questionStates.map((q) => ({
+      questionId: q.id,
+      timeTaken:
+        q.conversation.length > 0
+          ? (q.conversation[q.conversation.length - 1].timestamp -
+              q.conversation[0].timestamp) /
+            1000
+          : 0,
+    }));
+
+    try {
+      const { data: userData, error: userError } =
+        await supabase.auth.getUser();
+      if (userError) throw userError;
+
+      const { data, error } = await supabase.from("submissions").insert({
+        uid: userData.user.id,
+        assignmentID: persistentData.assignmentID,
+        content: content,
+        grade: 0,
+        outOf: persistentData.totalQuestions,
+        numQuestionsCompleted: numQuestionsCompleted,
+        timeTakenPerQuestion: timeTakenPerQuestion,
+      });
+
+      if (error) throw error;
+
+      // @ts-ignore
+      toast.success("Assignment submitted successfully!");
+      // Optionally, you can reset the session or redirect the user after submission
+      // handleResetSession();
+      // or
+      // window.location.assign('/dashboard');
+    } catch (error) {
+      console.error("Error submitting assignment:", error);
+      // @ts-ignore
+      toast.error("Failed to submit assignment. Please try again.");
+    }
   };
 
   const handleSendMessage = async (message: string) => {
-    setState(
-      produce((s) => {
-        const currentQuestion = s.questionStates[s.currentQuestionIndex];
-        if (currentQuestion) {
-          currentQuestion.conversation.push({
-            timestamp: Date.now(),
-            content: message,
-            role: "user",
-          });
-        }
-      })
-    );
+    if (message.trim() !== "") {
+      setState(
+        produce((s) => {
+          const currentQuestion = s.questionStates[s.currentQuestionIndex];
+          if (currentQuestion) {
+            currentQuestion.conversation.push({
+              timestamp: Date.now(),
+              content: message,
+              role: "user",
+            });
+          }
+        })
+      );
+    }
 
     try {
       const currentQuestion = state.questionStates[state.currentQuestionIndex];
@@ -314,14 +446,15 @@ const Assignment = () => {
         persistentData.totalQuestions
       );
 
-      const aiResponse = await fetchAIResponse(
-        currentQuestion.conversation.map(({ role, content }) => ({
+      const messages = currentQuestion.conversation.map(
+        ({ role, content }) => ({
           role,
           content,
-        })),
-        systemMessage
+        })
       );
+      showPlaceholderMessage();
 
+      const aiResponse = await fetchAIResponse(messages, systemMessage);
       setState(
         produce((s) => {
           const currentQuestion = s.questionStates[s.currentQuestionIndex];
@@ -335,10 +468,22 @@ const Assignment = () => {
         })
       );
     } catch (error) {
+      console.error(error);
       // @ts-ignore
       toast.error("Failed to fetch AI response. Please try again.");
     }
+
+    hidePlaceholderMessage();
   };
+
+  onMount(() => {
+    updateUserSession();
+    supabase.auth.getUser().then(({ data: { user }, error }) => {
+      if (error) {
+        window.location.assign(`/login`);
+      }
+    });
+  });
 
   return (
     <>

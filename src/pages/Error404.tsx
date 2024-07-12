@@ -87,10 +87,7 @@ const Error404: Component = () => {
             </div>
 
             <div class="card-actions justify-center">
-              <A
-                href={selectedInstitution() ? `/login` : "#"}
-                class="btn btn-primary"
-              >
+              <A href={`/login`} class="btn btn-primary">
                 Go to Homepage
               </A>
             </div>

@@ -6,6 +6,7 @@ import {
   institutionStore,
   userInstitution,
 } from "../index.tsx";
+import { useSearchParams } from "@solidjs/router";
 
 const Login: Component = () => {
   onMount(() => {
@@ -24,8 +25,9 @@ const Login: Component = () => {
 
   const isValidEmail = (email: string) => {
     const [, domain] = email.split("@");
-    return institutionStore.some(
-      (inst) => domain === `${inst.domainName}.${inst.topDomain}`
+    return institutionStore.some((inst) =>
+      // TODO: this not safe
+      domain.includes(`${inst.domainName}.${inst.topDomain}`)
     );
   };
 

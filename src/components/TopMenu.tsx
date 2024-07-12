@@ -117,11 +117,11 @@ export const TopMenu = (props: TopMenuProps) => {
         title="Confirm Submission"
       >
         <p class="py-4">
-          Are you sure you want to submit your current progress?
+          Are you sure you want to submit? Submissions cannot be undone.
         </p>
         <p class="py-4">
-          You have completed {props.totalQuestionsAnswered} out of{" "}
-          {props.totalQuestions} questions.
+          You have marked {props.totalQuestionsAnswered} out of{" "}
+          {props.totalQuestions} questions as answered.
         </p>
         <div class="modal-action">
           <button class="btn" onClick={() => setShowSubmitDialog(false)}>
@@ -145,8 +145,8 @@ export const TopMenu = (props: TopMenuProps) => {
         title="Reset Session"
       >
         <p class="py-4">
-          Are you sure you want to Reset Current Session? Any unsubmitted
-          progress will be lost.
+          Are you sure you want to Reset Current Session? Any progress will be
+          lost.
         </p>
         <div class="modal-action">
           <button class="btn" onClick={() => setShowResetSessionDialog(false)}>

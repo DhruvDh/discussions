@@ -36,6 +36,10 @@ const Message: ParentComponent<MessageProps> = (props) => {
     }, 30000);
   });
 
+  if (props.msg === "Please start following your instructions!") {
+    return <></>;
+  }
+
   return (
     <div
       class={props.role === "assistant" ? "chat chat-start" : "chat chat-end"}

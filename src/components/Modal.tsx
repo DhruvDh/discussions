@@ -40,13 +40,7 @@ export const Modal = (props: ModalProps) => {
           <h3 class="font-bold text-lg">{props.title}</h3>
         </Show>
         {props.children}
-        <div class="modal-action">
-          {props.children.actions || (
-            <button class="btn" onClick={closeModal}>
-              Close
-            </button>
-          )}
-        </div>
+        <div class="modal-action">{props.children.actions}</div>
       </div>
     </dialog>
   );
