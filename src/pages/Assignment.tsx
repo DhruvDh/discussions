@@ -116,7 +116,6 @@ Additional context: ${question.metadata}`;
 };
 
 const Assignment = () => {
-  updateUserSession();
   const params = useParams();
 
   const [state, setState] = createStore<AssignmentState>({
@@ -410,10 +409,7 @@ const Assignment = () => {
 
       // @ts-ignore
       toast.success("Assignment submitted successfully!");
-      // Optionally, you can reset the session or redirect the user after submission
-      // handleResetSession();
-      // or
-      // window.location.assign('/dashboard');
+      window.location.assign("/");
     } catch (error) {
       console.error("Error submitting assignment:", error);
       // @ts-ignore
@@ -477,12 +473,9 @@ const Assignment = () => {
   };
 
   onMount(() => {
-    updateUserSession();
-    supabase.auth.getUser().then(({ data: { user }, error }) => {
-      if (error) {
-        window.location.assign(`/login`);
-      }
-    });
+    if (!updateUserSession()) {
+      window.location.assign("/login");
+    }
   });
 
   return (

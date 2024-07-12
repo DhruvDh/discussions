@@ -1,18 +1,7 @@
-import {
-  createEffect,
-  onMount,
-  Show,
-  createSignal,
-  type Component,
-} from "solid-js";
+import { onMount, Show, createSignal, type Component } from "solid-js";
 import { MetaProvider, Title } from "@solidjs/meta";
-import {
-  iid,
-  updateUserSession,
-  userInstitution,
-  userStore,
-} from "../index.tsx";
-import { useNavigate, useSearchParams, A } from "@solidjs/router";
+import { updateUserSession, userInstitution, userStore } from "../index.tsx";
+import { useSearchParams, A } from "@solidjs/router";
 
 const Welcome: Component = () => {
   const [searchParams, _] = useSearchParams();
@@ -20,21 +9,17 @@ const Welcome: Component = () => {
   const [errorDescription, setErrorDescription] = createSignal<string | null>(
     null
   );
-  const navigate = useNavigate();
 
   onMount(() => {
-    updateUserSession();
     if (searchParams.error_code) {
       setErrorCode(searchParams.error_code);
       setErrorDescription(
         searchParams.error_description || "An error occurred."
       );
     }
-  });
 
-  createEffect(() => {
-    if (iid() || userInstitution()) {
-      navigate(`/${iid() ? iid() : userInstitution()?.id}/`);
+    if (updateUserSession()) {
+      window.location.assign("/");
     }
   });
 

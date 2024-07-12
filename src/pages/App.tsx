@@ -41,7 +41,9 @@ const fetchCourses = async (iid) => {
 
 const App: Component = () => {
   onMount(() => {
-    updateUserSession();
+    if (!updateUserSession()) {
+      window.location.assign("/login");
+    }
   });
 
   const [assignments, { refetch: refetchAssignments }] = createResource(

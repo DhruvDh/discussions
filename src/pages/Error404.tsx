@@ -4,7 +4,12 @@ import { MetaProvider, Title } from "@solidjs/meta";
 import { institutionStore, updateUserSession } from "../index.tsx";
 
 const Error404: Component = () => {
-  onMount(() => updateUserSession());
+  onMount(() => {
+    if (updateUserSession()) {
+      window.location.assign("/");
+    }
+  });
+
   const [searchParams, _] = useSearchParams();
   const [selectedInstitution, setSelectedInstitution] = createSignal<
     number | null

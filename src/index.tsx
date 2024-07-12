@@ -37,55 +37,69 @@ export const [userInstitution, setUserInstitution] =
   createSignal<Institution>(null);
 
 export const updateUserSession = () => {
-  if (sessionStorage.getItem("institutions")) {
-    setInstitutionStore(JSON.parse(sessionStorage.getItem("institutions")));
+  let loggedIn = false;
+
+  const institutions = sessionStorage.getItem("institutions");
+  if (institutions) {
+    setInstitutionStore(JSON.parse(institutions));
   } else {
     fetchInstitutions();
   }
 
-  if (sessionStorage.getItem("iid")) {
-    setIid(Number(sessionStorage.getItem("iid")));
+  const iid = sessionStorage.getItem("iid");
+  if (iid) {
+    setIid(Number(iid));
   }
 
-  if (sessionStorage.getItem("cid")) {
-    setCid(JSON.parse(sessionStorage.getItem("cid")));
+  const cid = sessionStorage.getItem("cid");
+  if (cid) {
+    setCid(JSON.parse(cid));
   }
 
-  if (localStorage.getItem("sb-oxrtehafaszdaaqejbwo-auth-token")) {
-    const localData = JSON.parse(
-      localStorage.getItem("sb-oxrtehafaszdaaqejbwo-auth-token")
-    );
+  const authToken = localStorage.getItem("sb-oxrtehafaszdaaqejbwo-auth-token");
+  if (authToken) {
+    const localData = JSON.parse(authToken);
     supabase.auth
       .setSession({
         access_token: localData.access_token,
         refresh_token: localData.refresh_token,
       })
       .then(({ data: { user }, error }) => {
-        if (!error) {
-          setUserStore(user);
-
-          if (iid() === null) {
-            supabase
-              .from("userData")
-              .select("*")
-              .eq("uid", user.id)
-              .single()
-              .then(({ data: userData, error }) => {
-                if (error) {
-                  throw error;
-                }
-
-                setIid(userData.iid);
-                sessionStorage.setItem("iid", userData.iid);
-                setCid(userData.courses);
-                sessionStorage.setItem("cid", JSON.stringify(userData.courses));
-              });
-          }
-        } else {
+        if (error) {
           console.error(error);
+          return;
         }
+
+        setUserStore(user);
+
+        if (!iid) {
+          supabase
+            .from("userData")
+            .select("*")
+            .eq("uid", user.id)
+            .single()
+            .then(({ data: userData, error }) => {
+              if (error) {
+                console.error(error);
+                return;
+              }
+
+              setIid(userData.iid);
+              sessionStorage.setItem("iid", userData.iid);
+              setCid(userData.courses);
+              sessionStorage.setItem("cid", JSON.stringify(userData.courses));
+              loggedIn = true;
+            });
+        } else {
+          loggedIn = true;
+        }
+      })
+      .catch((error) => {
+        console.error(error);
       });
   }
+
+  return authToken ? true : false;
 };
 
 export const fetchInstitutions = () => {
@@ -115,10 +129,6 @@ export const fetchAssignments = async ([iid, enrolledCourses]) => {
 };
 
 render(() => {
-  onMount(() => {
-    updateUserSession();
-  });
-
   createEffect(() => {
     if (iid() && institutionStore.length > 0) {
       setUserInstitution(institutionStore.find((i) => i.id === iid()));
@@ -127,10 +137,7 @@ render(() => {
 
   return (
     <Router>
-      <Route
-        path="/:institutionID/"
-        component={lazy(() => import("./pages/App.tsx"))}
-      />
+      <Route path="/" component={lazy(() => import("./pages/App.tsx"))} />
       <Route
         path="/login"
         component={lazy(() => import("./pages/Login.tsx"))}

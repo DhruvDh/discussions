@@ -10,12 +10,9 @@ import { useSearchParams } from "@solidjs/router";
 
 const Login: Component = () => {
   onMount(() => {
-    updateUserSession();
-    supabase.auth.getUser().then(({ data: { user }, error }) => {
-      if (!error) {
-        window.location.assign("/welcome");
-      }
-    });
+    if (updateUserSession()) {
+      window.location.assign("/");
+    }
   });
 
   const [email, setEmail] = createSignal("");
