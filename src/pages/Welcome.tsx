@@ -25,28 +25,6 @@ const Welcome: Component = () => {
     }
 
     if (updateUserSession()) {
-      const authToken = JSON.parse(
-        localStorage.getItem("sb-oxrtehafaszdaaqejbwo-auth-token")
-      );
-
-      supabase
-        .from("userData")
-        .select("*")
-        .eq("id", authToken?.user?.id || "")
-        .then(({ data, error }) => {
-          if (error) {
-            console.error(error);
-            return;
-          }
-
-          if (data.length === 0) {
-            supabase.from("userData").insert({
-              iid: iid(),
-              uid: authToken?.user?.id,
-            });
-          }
-        });
-
       window.location.assign("/");
     }
   });

@@ -46,9 +46,9 @@ export const updateUserSession = () => {
     fetchInstitutions();
   }
 
-  const iid = sessionStorage.getItem("iid");
-  if (iid) {
-    setIid(Number(iid));
+  const iidStorage = sessionStorage.getItem("iid");
+  if (iidStorage) {
+    setIid(Number(iidStorage));
   }
 
   const cid = sessionStorage.getItem("cid");
@@ -57,7 +57,10 @@ export const updateUserSession = () => {
   }
 
   const authToken = localStorage.getItem("sb-oxrtehafaszdaaqejbwo-auth-token");
+
   if (authToken) {
+    const authTokenObj = JSON.parse(authToken);
+
     const localData = JSON.parse(authToken);
     supabase.auth
       .setSession({
@@ -72,7 +75,7 @@ export const updateUserSession = () => {
 
         setUserStore(user);
 
-        if (!iid) {
+        if (!iid()) {
           supabase
             .from("userData")
             .select("*")
@@ -81,6 +84,24 @@ export const updateUserSession = () => {
             .then(({ data: userData, error }) => {
               if (error) {
                 console.error(error);
+                const institutionDomain = institutionStore.find((institution) =>
+                  authTokenObj.user.user_metadata.email.includes(
+                    institution.domainName
+                  )
+                );
+
+                supabase
+                  .from("userData")
+                  .insert({
+                    iid: iid() ? iid() : institutionDomain?.id,
+                    uid: authTokenObj?.user?.id,
+                  })
+                  .then(({ data, error }) => {
+                    if (error) {
+                      console.error(error);
+                    }
+                  });
+
                 return;
               }
 

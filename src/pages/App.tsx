@@ -4,14 +4,13 @@ import {
   For,
   Show,
   onMount,
+  createSignal,
   type Component,
 } from "solid-js";
 import { MetaProvider, Title } from "@solidjs/meta";
 import { A } from "@solidjs/router";
 import {
-  cid,
   fetchAssignments,
-  setCid,
   supabase,
   updateUserSession,
   userInstitution,
@@ -39,24 +38,47 @@ const fetchCourses = async (iid) => {
   return data;
 };
 
+const fetchUserData = async (uid) => {
+  if (!uid) return null;
+  const { data, error } = await supabase
+    .from("userData")
+    .select("*")
+    .eq("uid", uid)
+    .single();
+  if (error && error.code !== "PGRST116") throw error;
+  return data;
+};
+
 const App: Component = () => {
-  onMount(() => {
+  const [enrolledCourses, setEnrolledCourses] = createSignal([]);
+
+  onMount(async () => {
     if (!updateUserSession()) {
       window.location.assign("/login");
+    } else {
+      const userData = await fetchUserData(userStore.id);
+      if (!userData) {
+        // First-time user, create entry in userData table
+        const { error } = await supabase
+          .from("userData")
+          .insert({ uid: userStore.id, courses: [] });
+        if (error) {
+          console.error("Error creating user data:", error);
+          //@ts-ignore
+          toast.error("Failed to initialize user data");
+        }
+      } else {
+        setEnrolledCourses(userData.courses || []);
+      }
     }
   });
 
-  const [assignments, { refetch: refetchAssignments }] = createResource(
-    () => [userInstitution()?.id, cid()],
+  const [assignments] = createResource(
+    () => [userInstitution()?.id, enrolledCourses()],
     fetchAssignments
   );
   const [submissions] = createResource(() => userStore?.id, fetchSubmissions);
   const [courses] = createResource(() => userInstitution()?.id, fetchCourses);
-
-  createEffect(() => {
-    // Refetch assignments when cid changes
-    refetchAssignments();
-  });
 
   const getSubmissionStatus = (assignmentID) => {
     if (submissions.loading) return "Loading...";
@@ -68,29 +90,26 @@ const App: Component = () => {
   };
 
   const toggleCourse = async (courseId) => {
-    setCid((prev) => {
-      const newCid = prev.includes(courseId)
-        ? prev.filter((id) => id !== courseId)
-        : [...prev, courseId];
+    const newEnrolledCourses = enrolledCourses().includes(courseId)
+      ? enrolledCourses().filter((id) => id !== courseId)
+      : [...enrolledCourses(), courseId];
 
-      // Update userData in Supabase
-      supabase
-        .from("userData")
-        .update({ courses: newCid })
-        .eq("uid", userStore.id)
-        .then(({ error }) => {
-          if (error) {
-            console.error("Error updating course selections:", error);
-            // @ts-ignore
-            toast.error("Failed to update course selection");
-          } else {
-            // @ts-ignore
-            toast.success("Course selection updated");
-          }
-        });
+    setEnrolledCourses(newEnrolledCourses);
 
-      return newCid;
-    });
+    // Update userData in Supabase
+    const { error } = await supabase
+      .from("userData")
+      .update({ courses: newEnrolledCourses })
+      .eq("uid", userStore.id);
+
+    if (error) {
+      console.error("Error updating course selections:", error);
+      //@ts-ignore
+      toast.error("Failed to update course selection");
+    } else {
+      //@ts-ignore
+      toast.success("Course selection updated");
+    }
   };
 
   return (
@@ -177,7 +196,7 @@ const App: Component = () => {
                         <input
                           type="checkbox"
                           class="toggle toggle-primary"
-                          checked={cid().includes(course.id)}
+                          checked={enrolledCourses().includes(course.id)}
                           onChange={() => toggleCourse(course.id)}
                         />
                       </label>
