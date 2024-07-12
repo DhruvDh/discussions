@@ -11,6 +11,7 @@ import { MetaProvider, Title } from "@solidjs/meta";
 import { A } from "@solidjs/router";
 import {
   fetchAssignments,
+  iid,
   supabase,
   updateUserSession,
   userInstitution,
@@ -38,38 +39,43 @@ const fetchCourses = async (iid) => {
   return data;
 };
 
-const fetchUserData = async (uid) => {
-  if (!uid) return null;
-  const { data, error } = await supabase
-    .from("userData")
-    .select("*")
-    .eq("uid", uid)
-    .single();
-  if (error && error.code !== "PGRST116") throw error;
-  return data;
-};
-
 const App: Component = () => {
   const [enrolledCourses, setEnrolledCourses] = createSignal([]);
 
-  onMount(async () => {
+  onMount(() => {
     if (!updateUserSession()) {
       window.location.assign("/login");
     } else {
-      const userData = await fetchUserData(userStore.id);
-      if (!userData) {
-        // First-time user, create entry in userData table
-        const { error } = await supabase
-          .from("userData")
-          .insert({ uid: userStore.id, courses: [] });
-        if (error) {
-          console.error("Error creating user data:", error);
-          //@ts-ignore
-          toast.error("Failed to initialize user data");
-        }
-      } else {
-        setEnrolledCourses(userData.courses || []);
-      }
+      const authTokenObj = JSON.parse(
+        localStorage.getItem("sb-oxrtehafaszdaaqejbwo-auth-token")
+      );
+
+      supabase
+        .from("userData")
+        .select("*")
+        .eq("uid", authTokenObj.user.id)
+        .single()
+        .then(({ data, error }) => {
+          if (error) {
+            console.error("Error fetching user data:", error);
+
+            supabase
+              .from("userData")
+              .insert({ uid: authTokenObj.user.id, iid: iid(), courses: [] })
+              .then(({ error: e, data }) => {
+                if (e) {
+                  console.error("Error creating user data:", e);
+                  //@ts-ignore
+                  toast.error("Failed to initialize user data");
+                  throw e;
+                } else {
+                  setEnrolledCourses([]);
+                }
+              });
+          } else {
+            setEnrolledCourses(data?.courses || []);
+          }
+        });
     }
   });
 
