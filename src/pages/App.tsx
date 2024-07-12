@@ -8,7 +8,7 @@ import {
   type Component,
 } from "solid-js";
 import { MetaProvider, Title } from "@solidjs/meta";
-import { A } from "@solidjs/router";
+import { A, useNavigate } from "@solidjs/router";
 import {
   fetchAssignments,
   iid,
@@ -118,6 +118,22 @@ const App: Component = () => {
     }
   };
 
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      // @ts-ignore
+      toast.success("Logged out successfully");
+      navigate("/login", { replace: true });
+    } catch (error) {
+      console.error("Error logging out:", error);
+      // @ts-ignore
+      toast.error("Failed to log out. Please try again.");
+    }
+  };
+
   return (
     <>
       <Toaster />
@@ -131,9 +147,14 @@ const App: Component = () => {
       <div class="min-h-screen bg-amber-100 flex flex-col items-center py-12 px-4">
         <div class="card bg-base-100 max-w-4xl w-full shadow-xl mb-8">
           <div class="card-body">
-            <h2 class="card-title text-3xl mb-6">
-              Welcome, {userStore?.user_metadata?.email}!
-            </h2>
+            <div class="flex justify-between items-center mb-6">
+              <h2 class="card-title text-3xl">
+                Welcome, {userStore?.user_metadata?.email}!
+              </h2>
+              <button class="btn btn-secondary" onClick={handleLogout}>
+                Log Out
+              </button>
+            </div>
             <p class="text-lg mb-4">Institution: {userInstitution()?.name}</p>
 
             <Show
